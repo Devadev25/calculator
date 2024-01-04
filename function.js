@@ -12,93 +12,109 @@ function deleteLastChar() {
 }
 
 function appendToInput(value) {
+  console.log(value);
+  document.querySelector("input").value;
   document.querySelector("input").value += value;
 }
 
 function calculateResult() {
-  const currentInput = document.querySelector("input").value;
-  const result = evaluateExpression(currentInput);
+  const currentInput = document.querySelector("input").value.trim();
+  if (currentInput === "") {
+    // Handle empty input gracefully
+    return;
+  }
 
-  localStorage.setItem(document.querySelector("input").value, result);
-  sessionStorage.setItem(document.querySelector("input").value, result);
+  try {
+    const result = evaluateExpression(currentInput);
 
-  document.querySelector("input").value = result;
+    localStorage.setItem(currentInput, result);
+    sessionStorage.setItem(currentInput, result);
+
+    document.querySelector("input").value = result;
+  } catch (error) {
+    // Handle errors and display the error
+    console.error(error.message);
+  }
 }
 
 function evaluateExpression(expression) {
-  const tokens = regularExp(expression);
-  const postfixExpression = infixToPostfix(tokens);
-  const result = evaluateValidation(postfixExpression);
+  const elements = regularExp(expression);
+  const postfixForm = infixToPostfixConversion(elements);
+  const result = postfixExpressionEvaluator(postfixForm);
   return result;
 }
 
 function regularExp(expression) {
-  const spacedExpression = expression.replace(/([+\-*/()])/g, " $1 ");
-  const spacedNegativeExpression = spacedExpression.replace(
+  const readableExpression = expression.replace(/([+\-*/()])/g, " $1 ");
+  const formattedNegatives = readableExpression.replace(
     /-\s(\d+\.\d+|\d+)/g,
     "-$1"
   );
-  return spacedNegativeExpression.match(/(\d+\.\d+|\d+|[+\-*/()])/g);
+  console.log(formattedNegatives);
+  return formattedNegatives.match(/(\d+\.\d+|\d+|[+\-*/()])/g) || [];
 }
 
-function infixToPostfix(infixTokens) {
+function infixToPostfixConversion(infixTokens) {
   const precedence = { "+": 1, "-": 1, "*": 2, "/": 2 };
   const stack = [];
-  const postfixTokens = [];
+  const postfixElements = [];
 
-  for (const token of infixTokens) {
-    if (!isNaN(token) || token.includes(".")) {
-      postfixTokens.push(token);
+  for (const val of infixTokens) {
+    console.log(val);
+    if (!isNaN(val) || val.includes(".")) {
+      postfixElements.push(val);
     } else {
       while (
         stack.length &&
-        precedence[stack[stack.length - 1]] >= precedence[token]
+        precedence[stack[stack.length - 1]] >= precedence[val]
       ) {
-        postfixTokens.push(stack.pop());
+        postfixElements.push(stack.pop());
       }
-      stack.push(token);
+      stack.push(val);
     }
   }
 
   while (stack.length) {
-    postfixTokens.push(stack.pop());
+    postfixElements.push(stack.pop());
   }
-
-  return postfixTokens;
+  console.log(postfixElements);
+  return postfixElements;
 }
 
-function evaluateValidation(postfixTokens) {
-  const stack = [];
+function postfixExpressionEvaluator(postfixValues) {
+  const postfixResultsStack = [];
 
-  for (const token of postfixTokens) {
-    if (!isNaN(token) || token.includes(".")) {
-      stack.push(parseFloat(token));
+  for (const val of postfixValues) {
+    if (!isNaN(val) || val.includes(".")) {
+      postfixResultsStack.push(parseFloat(val));
     } else {
-      const operand2 = stack.pop();
-      const operand1 = stack.pop();
+      const operand2 = postfixResultsStack.pop();
+      const operand1 = postfixResultsStack.pop();
 
-      switch (token) {
+      switch (val) {
         case "+":
-          stack.push(operand1 + operand2);
+          postfixResultsStack.push(operand1 + operand2);
           break;
         case "-":
-          stack.push(operand1 - operand2);
+          postfixResultsStack.push(operand1 - operand2);
           break;
         case "*":
-          stack.push(operand1 * operand2);
+          postfixResultsStack.push(operand1 * operand2);
           break;
         case "/":
           if (operand2 === 0) {
             throw new Error("Division by zero");
           }
-          stack.push(operand1 / operand2);
+          postfixResultsStack.push(operand1 / operand2);
           break;
+        default:
+          throw new Error("Invalid operator: " + val);
       }
     }
   }
 
-  if (stack.length !== 1) {
+  if (postfixResultsStack.length !== 1) {
     throw new Error("Invalid expression");
   }
-  return stack.pop();
+  return postfixResultsStack.pop();
 }
